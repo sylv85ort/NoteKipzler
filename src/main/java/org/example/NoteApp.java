@@ -30,6 +30,7 @@ public class NoteApp {
         SpringApplication.run(NoteApp.class, args);
     }
 
+
     // CORS Configuration
     @Configuration
     public class WebConfig implements WebMvcConfigurer {
