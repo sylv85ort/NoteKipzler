@@ -3,12 +3,15 @@ package org.example;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
@@ -19,8 +22,10 @@ public class NoteApp {
     private static final Logger LOGGER = Logger.getLogger(NoteApp.class.getName());
 
     // Using CopyOnWriteArrayList for thread-safety during load testing
-    private static List<Note> notes = new CopyOnWriteArrayList<>();
-
+    protected static List<Note> notes = new CopyOnWriteArrayList<>();
+    public static List<Note> getNotes() {
+        return notes;
+    }
     public static void main(String[] args) {
         SpringApplication.run(NoteApp.class, args);
     }
@@ -122,4 +127,17 @@ public class NoteApp {
         public String getText() { return text; }
         public void setText(String text) { this.text = text; }
     }
+
+    @RestControllerAdvice
+    public class GlobalExceptionHandler {
+
+        @ExceptionHandler(IllegalArgumentException.class)
+        public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", ex.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+
 }

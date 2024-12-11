@@ -1,6 +1,16 @@
+// notes.js
+
+// Helper function to handle fetch errors
+function handleFetchError(response) {
+    if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    return response;
+}
+
 function addNote() {
-    const noteText = document.getElementById('noteText').value;
-    if (!noteText.trim()) {
+    const noteText = document.getElementById('noteText').value.trim();
+    if (!noteText) {
         alert('Note cannot be empty');
         return;
     }
@@ -12,92 +22,62 @@ function addNote() {
         },
         body: JSON.stringify({ text: noteText })
     })
-    .then(response => response.json())
-    .then(note => {
+    .then(handleFetchError)
+    .then(() => {
+        document.getElementById('noteText').value = ''; // Clear input field
         loadNotes();
-        document.getElementById('noteText').value = '';
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => console.error('Error adding note:', error));
 }
 
 function loadNotes() {
     fetch('/api/notes')
-    .then(response => response.json())
-    .then(notes => {
-        const notesList = document.getElementById('notesList');
-        notesList.innerHTML = ''; // Clear existing notes
+        .then(handleFetchError)
+        .then(response => response.json())
+        .then(renderNotes)
+        .catch(error => console.error('Error loading notes:', error));
+}
 
-        notes.forEach(note => {
-            const noteElement = document.createElement('div');
-            noteElement.className = 'note-list-item';
-            noteElement.innerHTML = `
-                <span>${note.text}</span>
-                <div class="note-actions">
-                    <button onclick="markNoteDone(${note.id})">Mark Done</button>
-                    <button onclick="deleteNote(${note.id})">Delete</button>
-                </div>
-            `;
-            notesList.appendChild(noteElement);
-        });
-    })
-    .catch(error => console.error('Error:', error));
+function renderNotes(notes) {
+    const notesList = document.getElementById('notesList');
+    notesList.innerHTML = ''; // Clear existing notes
+
+    notes.forEach(note => {
+        const noteElement = document.createElement('div');
+        noteElement.className = 'note-list-item';
+        noteElement.id = `note-${note.id}`;
+        noteElement.innerHTML = `
+            <span>${note.text}</span>
+            <div class="note-actions">
+                <button onclick="deleteNote(${note.id})">Delete</button>
+                ${!note.done ? `<button onclick="markNoteDone(${note.id})">Mark as Done</button>` : '<span>Done</span>'}
+            </div>
+        `;
+        notesList.appendChild(noteElement);
+    });
 }
 
 function markNoteDone(id) {
-    fetch(`/api/notes/${id}/done`, { method: 'PUT'
-    })
-    .then(response => {
-            if (response.ok) {
-                console.log("Note marked as done");
-                // Optionally remove the note from the UI
-                fetchNotes();
-            } else {
-                console.error("Failed to mark note");
-            }
+    fetch(`/api/notes/${id}/done`, { method: 'PUT' })
+        .then(handleFetchError)
+        .then(() => {
+            console.log(`Note ${id} marked as done`);
+            loadNotes();
         })
-        .catch(error => {
-            console.error("Error marking note as done:", error);
-        });
+        .catch(error => console.error('Error marking note as done:', error));
 }
 
 function deleteNote(id) {
     fetch(`/api/notes/${id}`, {
         method: 'DELETE',
     })
-    .then(response => {
-        if (response.ok) {
-            console.log("Note deleted successfully");
-            // Optionally remove the note from the UI
-            fetchNotes();
-        } else {
-            console.error("Failed to delete note");
-        }
+    .then(handleFetchError)
+    .then(() => {
+        console.log(`Note ${id} deleted successfully`);
+        loadNotes();
     })
-    .catch(error => {
-        console.error("Error deleting note:", error);
-    });
+    .catch(error => console.error('Error deleting note:', error));
 }
-function fetchNotes() {
-    fetch('/api/notes')
-        .then(response => response.json())
-        .then(notes => {
-            const notesList = document.getElementById('notesList');
-            notesList.innerHTML = ''; // Clear current notes list
-            notes.forEach(note => {
-                const noteElement = document.createElement('div');
-                noteElement.id = `note-${note.id}`;
-                noteElement.innerHTML = `
-                    <p>${note.text}</p>
-                    <button onclick="deleteNote(${note.id})">Delete</button>
-                    ${!note.done ? `<button onclick="markNoteDone(${note.id})">Mark as Done</button>` : '<span>Done</span>'}
-                `;
-                notesList.appendChild(noteElement);
-            });
-        })
-        .catch(error => console.error('Error fetching notes:', error));
-}
-
-
 
 // Load notes when page loads
 document.addEventListener('DOMContentLoaded', loadNotes);
