@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
     libgdk-pixbuf2.0-0
 
 # Set the JAVA_OPTS to ensure headless mode if using Java GUI libraries like AWT/Swing
-ENV JAVA_OPTS="-Djava.awt.headless=true"
+#ENV JAVA_OPTS="-Djava.awt.headless=true"
 
 # Run Maven clean package to build the project
 RUN mvn clean package -DskipTests
@@ -27,10 +27,12 @@ RUN mvn clean package -DskipTests
 FROM openjdk:21-jdk-slim
 
 # Set environment variables for headless operation
-ENV JAVA_OPTS="-Djava.awt.headless=true"
+#ENV JAVA_OPTS="-Djava.awt.headless=true"
 
 # Copy the JAR file from the previous build stage (from the 'build' stage)
 COPY --from=build /app/target/NoteKipzler-1.0-SNAPSHOT.jar /app/NoteKipzler-1.0-SNAPSHOT.jar
 
 # Command to run the application
-ENTRYPOINT ["java", "-jar", "/app/NoteKipzler-1.0-SNAPSHOT.jar"]
+ENTRYPOINT Xvfb :99 & \
+               export DISPLAY=:99 && \
+               java, -jar, /app/NoteKipzler-1.0-SNAPSHOT.jar
