@@ -1,80 +1,82 @@
 pipeline {
-    agent any
+    agent any  // This defines that the pipeline can run on any available agent.
 
     environment {
-        DATADOG_API_KEY = credentials('datadog-api-key')
-        JAVA_HOME = tool name: 'JDK-21'
+        DATADOG_API_KEY = credentials('DATADOG_API_KEY')  // Use Jenkins credentials to securely store the Datadog API key.
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                // Checkout the code from your Git repository
+                git 'https://github.com/sylv85ort/NoteKipzler.git'  // Replace with your actual Git repository URL
             }
         }
 
-        stage('Build') {
+        stage('Build with Maven') {
             steps {
-                withMaven(maven: 'Maven') {
-                    sh 'mvn clean package'
-                }
+                // Execute Maven clean package command
+                sh 'mvn clean package'
             }
         }
 
-        stage('DataDog Integration') {
+        stage('Run JMeter Test') {
             steps {
+                // Execute JMeter test plan
+                sh 'jmeter -n -t test_plan.jmx -l results.jtl'
+            }
+        }
+
+        stage('Install and Configure Datadog Agent') {
+            steps {
+                // Install Datadog Agent and configure it
+                sh '''
+                    DD_API_KEY=${DATADOG_API_KEY} DD_SITE="us5.datadoghq.com" bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script.sh)"
+                    echo "api_key: ${DATADOG_API_KEY}" | sudo tee /etc/datadog-agent/datadog.yaml
+                    sudo systemctl restart datadog-agent
+                '''
+            }
+        }
+
+        stage('Post Build Task - Datadog Event') {
+            steps {
+                // Post build status to Datadog
                 script {
-                    // Install DataDog Agent
-                    sh '''
-                        DD_API_KEY=${DATADOG_API_KEY} DD_SITE="datadoghq.com" bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script.sh)"
-                    '''
-
-                    // Configure DataDog Agent
-                    sh '''
-                        echo "api_key: ${DATADOG_API_KEY}" | sudo tee /etc/datadog-agent/datadog.yaml
-                        sudo systemctl restart datadog-agent
-                    '''
+                    def buildStatus = currentBuild.currentResult == 'SUCCESS' ? 'success' : 'error'
+                    sh """
+                        curl -X POST "https://api.datadoghq.com/api/v1/events" \
+                        -H "Content-Type: application/json" \
+                        -H "DD-API-KEY: ${DATADOG_API_KEY}" \
+                        -d '{
+                            "title": "Jenkins Build ${BUILD_NUMBER}",
+                            "text": "Build status: ${buildStatus}",
+                            "alert_type": "${buildStatus}",
+                            "tags": ["service:your-service", "env:production"]
+                        }'
+                    """
                 }
             }
         }
 
-        stage('JMeter Performance Tests') {
+        stage('Run Java Application') {
             steps {
-                script {
-                    // Run JMeter tests with DataDog monitoring
-                    sh '''
-                        jmeter -n -t test-plan.jmx -l results.jtl
-                    '''
-                }
-            }
-            post {
-                always {
-                    perfReport 'results.jtl'
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                // Your deployment steps
-                sh 'mvn spring-boot:run'
+                // Run the Java application with JMX options
+                sh 'java -Dcom.sun.management.jmxremote \
+                    -Dcom.sun.management.jmxremote.port=9010 \
+                    -Dcom.sun.management.jmxremote.local.only=false \
+                    -Dcom.sun.management.jmxremote.authenticate=false \
+                    -Dcom.sun.management.jmxremote.ssl=false \
+                    -jar target/NoteKipzler-1.0-SNAPSHOT.jar'
             }
         }
     }
 
     post {
         success {
-            // Send notification to DataDog
-            script {
-                sh "curl -X POST https://api.datadoghq.com/api/v1/events -H 'Content-Type: application/json' -H 'DD-API-KEY: ${DATADOG_API_KEY}' -d '{\"title\":\"Deployment Successful\",\"text\":\"Jenkins deployment completed\",\"alert_type\":\"success\"}'"
-            }
+            echo 'Build completed successfully!'
         }
-
         failure {
-            // Send failure notification
-            script {
-                sh "curl -X POST https://api.datadoghq.com/api/v1/events -H 'Content-Type: application/json' -H 'DD-API-KEY: ${DATADOG_API_KEY}' -d '{\"title\":\"Deployment Failed\",\"text\":\"Jenkins deployment failed\",\"alert_type\":\"error\"}'"
-            }
+            echo 'Build failed!'
         }
     }
 }
