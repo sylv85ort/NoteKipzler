@@ -1,0 +1,7 @@
+dd:
+  service: your-service-name
+  env: production
+  trace:
+    enabled: true
+  jmx:
+    enabled: true
