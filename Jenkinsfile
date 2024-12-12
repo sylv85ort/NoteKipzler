@@ -3,8 +3,6 @@ pipeline {
 
     environment {
         DATADOG_API_KEY = credentials('DATADOG_API_KEY')  // Use Jenkins credentials to securely store the Datadog API key.
-        // Append JMeter's bin directory to the PATH
-        PATH+EXTRA = "/opt/jmeter/bin"
         }
 
     stages {
@@ -23,11 +21,15 @@ pipeline {
         }
 
         stage('Run JMeter Test') {
-            steps {
-                // Execute JMeter test plan
-                sh 'jmeter -n -t test_plan.jmx -l results.jtl'
+                environment {
+                    // Appending JMeter's bin directory to the PATH using withEnv
+                    PATH = "/opt/jmeter/bin:${env.PATH}"
+                }
+                steps {
+                    // Run JMeter test plan
+                    sh 'jmeter -n -t test_plan.jmx -l results.jtl'
+                }
             }
-        }
 
         stage('Install and Configure Datadog Agent') {
             steps {
