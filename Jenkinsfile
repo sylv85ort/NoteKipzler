@@ -1,41 +1,38 @@
 pipeline {
-    agent any  // This defines that the pipeline can run on any available agent.
+    agent any
 
     environment {
-        DATADOG_API_KEY = credentials('DATADOG_API_KEY')  // Use Jenkins credentials to securely store the Datadog API key.
-        }
+        DATADOG_API_KEY = credentials('DATADOG_API_KEY')
+    }
 
     stages {
         stage('Checkout Code') {
             steps {
-                // Checkout the code from your Git repository
-                git 'https://github.com/sylv85ort/NoteKipzler.git'  // Replace with your actual Git repository URL
+                git 'https://github.com/sylv85ort/NoteKipzlergit'
             }
         }
 
         stage('Build with Maven') {
             steps {
-                // Execute Maven clean package command
                 sh 'mvn clean package'
             }
         }
 
         stage('Run JMeter Test') {
-                environment {
-                    // Appending JMeter's bin directory to the PATH using withEnv
-                    PATH = "/opt/jmeter/bin:${env.PATH}"
-                }
-                steps {
-                    // Run JMeter test plan
-                    sh 'jmeter -n -t test_plan.jmx -l results.jtl'
-                }
+            environment {
+                // Appending JMeter's bin directory to the PATH using withEnv
+                PATH = "/opt/jmeter/bin:${env.PATH}"
             }
+            steps {
+                // Run JMeter test plan
+                sh 'jmeter -n -t test_plan.jmx -l results.jtl'
+            }
+        }
 
         stage('Install and Configure Datadog Agent') {
             steps {
-                // Install Datadog Agent and configure it
                 sh '''
-                    DD_API_KEY=${DATADOG_API_KEY} DD_SITE="us5.datadoghq.com" bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script.sh)"
+                    DD_API_KEY=${DATADOG_API_KEY} DD_SITE="datadoghq.com" bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script.sh)"
                     echo "api_key: ${DATADOG_API_KEY}" | sudo tee /etc/datadog-agent/datadog.yaml
                     sudo systemctl restart datadog-agent
                 '''
@@ -44,7 +41,6 @@ pipeline {
 
         stage('Post Build Task - Datadog Event') {
             steps {
-                // Post build status to Datadog
                 script {
                     def buildStatus = currentBuild.currentResult == 'SUCCESS' ? 'success' : 'error'
                     sh """
@@ -64,7 +60,6 @@ pipeline {
 
         stage('Run Java Application') {
             steps {
-                // Run the Java application with JMX options
                 sh 'java -Dcom.sun.management.jmxremote \
                     -Dcom.sun.management.jmxremote.port=9010 \
                     -Dcom.sun.management.jmxremote.local.only=false \
