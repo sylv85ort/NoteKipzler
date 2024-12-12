@@ -19,10 +19,6 @@ pipeline {
         }
 
         stage('Run JMeter Test') {
-            environment {
-                // Appending JMeter's bin directory to the PATH using withEnv
-                PATH = "/opt/jmeter/bin:${env.PATH}"
-            }
             steps {
                 // Run JMeter test plan
                 sh 'jmeter -n -t test_plan.jmx -l results.jtl'
