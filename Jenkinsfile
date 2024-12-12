@@ -5,11 +5,10 @@ pipeline {
         DATADOG_API_KEY = credentials('DATADOG_API_KEY')
     }
 
-    040ce763-020d-4ca8-9af4-01b14afcc604
 
     stage('Checkout Code') {
         steps {
-            git credentialsId: 'your-credentials-id', url: 'https://github.com/sylv85ort/NoteKipzler.git'
+            git credentialsId: '040ce763-020d-4ca8-9af4-01b14afcc604', url: 'https://github.com/sylv85ort/NoteKipzler.git'
         }
 
 
