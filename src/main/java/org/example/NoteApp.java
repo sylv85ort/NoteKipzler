@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
+//Hi man hows it going?
+
 @SpringBootApplication
 @RequestMapping("/api/notes")
 @RestController
